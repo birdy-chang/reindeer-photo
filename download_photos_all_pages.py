@@ -27,6 +27,18 @@ class PhotoDownloader:
         self.password = os.getenv("REINDEER_PASSWORD")
         self.class_name = os.getenv("REINDEER_CLASS_NAME")
 
+        # Get MAX_ALBUMS setting (default to 'all')
+        max_albums_str = os.getenv("MAX_ALBUMS", "all").strip().lower()
+        if max_albums_str == "all":
+            self.max_albums = None  # None means no limit
+        else:
+            try:
+                self.max_albums = int(max_albums_str)
+                if self.max_albums <= 0:
+                    raise ValueError("MAX_ALBUMS must be a positive number or 'all'")
+            except ValueError as e:
+                raise ValueError(f"MAX_ALBUMS must be a positive number or 'all', got: {max_albums_str}") from e
+
         # Validate required environment variables
         if not self.username:
             raise ValueError("REINDEER_USERNAME environment variable is required")
@@ -80,9 +92,12 @@ class PhotoDownloader:
             print(f"Selecting '{self.class_name}'...", flush=True)
             self.driver.find_element(By.XPATH, f"//*[contains(text(), '{self.class_name}')]").click()
             time.sleep(3)
-            
+
             # Step 5: Get all album URLs from all pages
-            print("Finding all albums across all pages...", flush=True)
+            if self.max_albums is None:
+                print("Finding all albums across all pages (MAX_ALBUMS=all)...", flush=True)
+            else:
+                print(f"Finding albums (MAX_ALBUMS={self.max_albums})...", flush=True)
             all_album_urls = self.get_all_album_urls()
             print(f"Found {len(all_album_urls)} total albums\n", flush=True)
             
@@ -138,27 +153,42 @@ class PhotoDownloader:
         """Get all album URLs from all pages in the album list"""
         all_urls = []
         page_num = 1
-        
+
         while True:
             print(f"  Scanning album list page {page_num}...", flush=True)
-            
+
             # Get albums on current page
             time.sleep(2)
             albums = self.driver.find_elements(By.CLASS_NAME, "albumbgphoto")
             page_urls = [link.get_attribute("href") for link in albums]
+
+            # Check if we need to limit the number of albums
+            if self.max_albums is not None:
+                remaining_slots = self.max_albums - len(all_urls)
+                if remaining_slots <= 0:
+                    print(f"    Reached MAX_ALBUMS limit ({self.max_albums})", flush=True)
+                    break
+                # Only take what we need
+                page_urls = page_urls[:remaining_slots]
+
             all_urls.extend(page_urls)
             print(f"    Found {len(page_urls)} albums on page {page_num}", flush=True)
-            
+
+            # If we've reached the limit, stop
+            if self.max_albums is not None and len(all_urls) >= self.max_albums:
+                print(f"    Reached MAX_ALBUMS limit ({self.max_albums}), stopping pagination", flush=True)
+                break
+
             # Check if there's a next page
             pagination = self.driver.find_elements(By.CSS_SELECTOR, "ul.pagination li a")
             next_page_num = page_num + 1
             next_page_link = None
-            
+
             for link in pagination:
                 if link.text.strip() == str(next_page_num):
                     next_page_link = link
                     break
-            
+
             if next_page_link:
                 print(f"    Navigating to page {next_page_num}...", flush=True)
                 next_page_link.click()
@@ -167,7 +197,7 @@ class PhotoDownloader:
             else:
                 print(f"    No more pages (reached page {page_num})", flush=True)
                 break
-        
+
         return all_urls
 
     def download_album(self, album_url, current, total):

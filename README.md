@@ -29,6 +29,7 @@ pip install -r requirements.txt
    REINDEER_USERNAME=your_actual_username
    REINDEER_PASSWORD=your_actual_password
    REINDEER_CLASS_NAME=班級114
+   MAX_ALBUMS=all
    ```
 
    **Option B: Export environment variables**
@@ -36,9 +37,10 @@ pip install -r requirements.txt
    export REINDEER_USERNAME=your_username
    export REINDEER_PASSWORD=your_password
    export REINDEER_CLASS_NAME=班級114
+   export MAX_ALBUMS=all
    ```
 
-   **Note:** All three environment variables are required. The script will exit with an error if any are missing.
+   **Note:** The first three environment variables (USERNAME, PASSWORD, CLASS_NAME) are required. The script will exit with an error if any are missing.
 
 ## Usage
 
@@ -52,9 +54,30 @@ The script will:
 2. Click `校園花絮` → `班級相簿`
 3. Login with your credentials (from environment variables)
 4. Select your class (e.g., `班級114`)
-5. Scan all album list pages to find all albums
+5. Scan all album list pages to find all albums (or up to MAX_ALBUMS limit)
 6. Download all photos from all pages in each album
 7. Save photos to `photo/` folder with album subfolders
+
+### Limiting Album Downloads
+
+By default, the script downloads **all albums**. You can limit the number of albums to download using the `MAX_ALBUMS` environment variable:
+
+**Download all albums (default):**
+```bash
+MAX_ALBUMS=all
+```
+
+**Download only the first 5 albums:**
+```bash
+MAX_ALBUMS=5
+```
+
+**Download only the first 10 albums:**
+```bash
+MAX_ALBUMS=10
+```
+
+The script will stop fetching more album list pages once the limit is reached, making it faster for testing or partial downloads.
 
 ## Project Structure
 
@@ -103,6 +126,7 @@ photo/
 - ✅ **Full pagination support** - Downloads from ALL album list pages
 - ✅ **Downloads ALL photos** - Goes through all pages within each album
 - ✅ **Configurable class name** - Download from any class (班級114, 班級113, etc.)
+- ✅ **Configurable album limit** - Download all albums or limit to first N albums
 - ✅ Preserves original filenames
 - ✅ Skips already downloaded photos (resume capability)
 - ✅ Organized folder structure by album name
